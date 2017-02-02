@@ -12,6 +12,11 @@ outdir = args[5]
 
 #' Load the data
 dat = parse_data(dpclustinput_infile)
+if (nrow(dat) < 2) {
+  print("Not enough SNVs")
+  q(save="no")
+}
+
 cluster_ccf = median(dat$subclonal.fraction, na.rm=T)
 cluster_cp = cluster_ccf * purity
 

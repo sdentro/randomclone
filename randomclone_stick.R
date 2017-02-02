@@ -16,6 +16,10 @@ outdir = args[5]
 
 #' Load the data
 dat = parse_data(dpclustinput_infile)
+if (nrow(dat) < 2) {
+  print("Not enough SNVs")
+  q(save="no")
+}
 
 #' Draw number of clusters
 n_clusters = sample(MIN_CLUSTERS:MAX_CLUSTERS, 1)
