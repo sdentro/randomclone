@@ -2,8 +2,8 @@
 #' 
 #' Rscript randomclone_stick.R 1e27cc8a-5394-4958-9af6-5ece1fe24516 1e27cc8a-5394-4958-9af6-5ece1fe24516_allDirichletProcessInfo.txt 0.77 GBM-US output/stick/
 #' 
-set.seed(123)
-source("util.R")
+# set.seed(123)
+source("~/repo/randomclone/util.R")
 MIN_CLUSTERS = 1
 MAX_CLUSTERS = 5
 
@@ -45,6 +45,7 @@ cluster_locations = rep(NA, n_clusters)
 for (i in 1:n_clusters) {
   cluster_locations[i] = median(dat$subclonal.fraction[assignments==i], na.rm=T)
 }
+cluster_locations = cluster_locations[!is.na(cluster_locations)]
 
 structure_df = data.frame(table(assignments), 
                           proportion=cluster_locations * purity,
