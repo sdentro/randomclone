@@ -2,6 +2,7 @@
 #' 
 #' Rscript randomclone_single.R 1e27cc8a-5394-4958-9af6-5ece1fe24516 1e27cc8a-5394-4958-9af6-5ece1fe24516_allDirichletProcessInfo.txt 0.77 GBM-US output/single/
 source("~/repo/randomclone/util.R")
+FORCE_CLONE = F
 
 args = commandArgs(T)
 samplename = args[1]
@@ -17,7 +18,11 @@ if (nrow(dat) < 2) {
   q(save="no")
 }
 
-cluster_ccf = median(dat$subclonal.fraction, na.rm=T)
+if (!FORCE_CLONE) {
+  cluster_ccf = median(dat$subclonal.fraction, na.rm=T)
+} else {
+  cluster_ccf = 1
+}
 cluster_cp = cluster_ccf * purity
 
 structure_df = data.frame(cluster=1, 
