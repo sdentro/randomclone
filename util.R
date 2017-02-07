@@ -120,24 +120,25 @@ binom_ll = function(cluster_location, mutcount, wtcount, tumourCopyNumber, copyN
 }
 
 binom_ll_diff = function(structure_df, assignments, mutcount, wtcount, tumourCopyNumber, copyNumberAdjustment, purity, normalCopyNumber) {
-  assignment_ll = array(NA, c(length(mutcount), nrow(structure_df)))
-  for (j in 1:nrow(structure_df)) {
-    mutBurdens = mutationCopyNumberToMutationBurden(structure_df$ccf[j] * copyNumberAdjustment, tumourCopyNumber, purity, normalCopyNumber)
-    # assignment_ll = sapply(1:length(mutcount), function(k, mc, wt, mb) {  mc[k]*log(mb[k]) + wt[k]*log(1-mb[k]) }, mc=mutcount, wt=wtcount, mb=mutBurdens)
-    assignment_ll[,j] = sapply(1:length(mutcount), function(k, mc, wt, mb) {  mutcount[k]*log(mutBurdens[k]) + wtcount[k]*log(1-mutBurdens[k]) }, mc=mutcount, wt=wtcount, mb=mutBurdens)
-  }
-  
-  # calc likelihood of assigned cluster minus not assigned cluster
-  ll_diff = rep(NA, nrow(dat))
-  for (j in 1:nrow(dat)) {
-    assigned = assignments[j]
-    ll_diff[j] = assignment_ll[j, assigned]
-    for (c in (1:nrow(structure_df))[-assigned]) {
-      ll_diff[j] = ll_diff[j] - assignment_ll[j, c]
-    }
-  }
-
-  return(sum(ll_diff))
+  # assignment_ll = array(NA, c(length(mutcount), nrow(structure_df)))
+  # for (j in 1:nrow(structure_df)) {
+  #   mutBurdens = mutationCopyNumberToMutationBurden(structure_df$ccf[j] * copyNumberAdjustment, tumourCopyNumber, purity, normalCopyNumber)
+  #   # assignment_ll = sapply(1:length(mutcount), function(k, mc, wt, mb) {  mc[k]*log(mb[k]) + wt[k]*log(1-mb[k]) }, mc=mutcount, wt=wtcount, mb=mutBurdens)
+  #   assignment_ll[,j] = sapply(1:length(mutcount), function(k, mc, wt, mb) {  mutcount[k]*log(mutBurdens[k]) + wtcount[k]*log(1-mutBurdens[k]) }, mc=mutcount, wt=wtcount, mb=mutBurdens)
+  # }
+  # 
+  # # calc likelihood of assigned cluster minus not assigned cluster
+  # ll_diff = rep(NA, nrow(dat))
+  # for (j in 1:nrow(dat)) {
+  #   assigned = assignments[j]
+  #   ll_diff[j] = assignment_ll[j, assigned]
+  #   for (c in (1:nrow(structure_df))[-assigned]) {
+  #     ll_diff[j] = ll_diff[j] - assignment_ll[j, c]
+  #   }
+  # }
+  # 
+  # return(sum(ll_diff))
+  return(NA)
 }
 
 binom_ll_2 = function(structure_df, mutcount, wtcount, tumourCopyNumber, copyNumberAdjustment, purity, normalCopyNumber) {
@@ -262,4 +263,41 @@ randomclone_unif = function(dat, min_bound_data, max_bound_data, force_clone=F) 
   return(list(structure=structure_df, assignments=cluster_assignments))
 }
 
-
+randomclone_stick = function(dat) {
+  #' Draw number of clusters
+  n_clusters = sample(MIN_CLUSTERS:MAX_CLUSTERS, 1)
+  
+  #' Sort SNVs by their CCF
+  snv_order = order(dat$subclonal.fraction)
+  assignments = rep(NA, nrow(dat))
+  if (n_clusters > 1) {
+    #' Put n-1 breaks
+    breaks = sample(1:nrow(dat), n_clusters-1)
+    
+    #' for the n clusters take median CCF as the cluster locations
+    for (i in 1:length(breaks)) {
+      cluster_break = breaks[i]
+      assignments[snv_order < cluster_break] = i
+    }
+  } else {
+    cluster_break = 0
+    i = 0
+  }
+  
+  #' Assign SNVs of the final cluster
+  assignments[snv_order > cluster_break] = i+1
+  
+  #' Determine cluster locations
+  cluster_locations = rep(NA, n_clusters)
+  for (i in 1:n_clusters) {
+    cluster_locations[i] = median(dat$subclonal.fraction[assignments==i], na.rm=T)
+  }
+  cluster_locations = cluster_locations[!is.na(cluster_locations)]
+  
+  structure_df = data.frame(table(assignments), 
+                            proportion=cluster_locations * purity,
+                            ccf=cluster_locations)
+  colnames(structure_df)[1] = "cluster"
+  colnames(structure_df)[2] = "n_ssms"
+  return(list(structure=structure_df, assignments=assignments))
+}
