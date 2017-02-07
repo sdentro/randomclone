@@ -6,6 +6,9 @@
 source("~/repo/randomclone/util.R")
 MIN_CLUSTERS = 1
 MAX_CLUSTERS = 5
+FORCE_CLONE = F
+MIN_BOUND_DATA = .025
+MAX_BOUND_DATA = .975
 
 args = commandArgs(T)
 samplename = args[1]
@@ -21,7 +24,7 @@ if (nrow(dat) < 2) {
   q(save="no")
 }
 
-res = randomclone_unif(dat)
+res = randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE)
 
 #' Write the output
 write_output_calibration_format(samplename, dat, res$structure, res$assignments, purity, outdir)

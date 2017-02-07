@@ -119,6 +119,38 @@ binom_ll = function(cluster_location, mutcount, wtcount, tumourCopyNumber, copyN
   return(sum(assignment_ll))
 }
 
+binom_ll_diff = function(structure_df, assignments, mutcount, wtcount, tumourCopyNumber, copyNumberAdjustment, purity, normalCopyNumber) {
+  assignment_ll = array(NA, c(length(mutcount), nrow(structure_df)))
+  for (j in 1:nrow(structure_df)) {
+    mutBurdens = mutationCopyNumberToMutationBurden(structure_df$ccf[j] * copyNumberAdjustment, tumourCopyNumber, purity, normalCopyNumber)
+    # assignment_ll = sapply(1:length(mutcount), function(k, mc, wt, mb) {  mc[k]*log(mb[k]) + wt[k]*log(1-mb[k]) }, mc=mutcount, wt=wtcount, mb=mutBurdens)
+    assignment_ll[,j] = sapply(1:length(mutcount), function(k, mc, wt, mb) {  mutcount[k]*log(mutBurdens[k]) + wtcount[k]*log(1-mutBurdens[k]) }, mc=mutcount, wt=wtcount, mb=mutBurdens)
+  }
+  
+  # calc likelihood of assigned cluster minus not assigned cluster
+  ll_diff = rep(NA, nrow(dat))
+  for (j in 1:nrow(dat)) {
+    assigned = assignments[j]
+    ll_diff[j] = assignment_ll[j, assigned]
+    for (c in (1:nrow(structure_df))[-assigned]) {
+      ll_diff[j] = ll_diff[j] - assignment_ll[j, c]
+    }
+  }
+
+  return(sum(ll_diff))
+}
+
+binom_ll_2 = function(structure_df, mutcount, wtcount, tumourCopyNumber, copyNumberAdjustment, purity, normalCopyNumber) {
+  binom_ll_sample = 0
+  for (j in 1:nrow(structure_df)) {
+    mutBurdens = mutationCopyNumberToMutationBurden(structure_df$ccf[j] * copyNumberAdjustment, tumourCopyNumber, purity, normalCopyNumber)
+    binom_ll_sample = binom_ll_sample + sapply(1:length(mutcount), function(k, mc, wt, mb) {  mc[k]*log(mb[k]) + wt[k]*log(1-mb[k]) }, mc=mutcount, wt=wtcount, mb=mutBurdens)
+  }
+  return(sum(binom_ll_sample))
+}
+
+
+
 calc_all_metrics = function(dat, purity, res) {
   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
   num_muts = nrow(dat)
@@ -126,35 +158,71 @@ calc_all_metrics = function(dat, purity, res) {
   likelihoods = rep(NA, ITERATIONS)
   aics = rep(NA, ITERATIONS)
   bics = rep(NA, ITERATIONS)
-  binom_ll = rep(NA, ITERATIONS)
+  binom_lls = rep(NA, ITERATIONS)
+  binom_ll_2s = rep(NA, ITERATIONS)
+  binom_ll_diffs = rep(NA, ITERATIONS)
   for (i in 1:ITERATIONS) {
     structure_df = res[[i]]$structure
+    assignments = res[[i]]$assignments
     likelihoods[i] = calc.new.likelihood(dat$mut.count, (dat$mut.count+dat$WT.count), kappa, structure_df$ccf)
     aics[i] = aic(likelihoods[i], num_samples, nrow(structure_df))
     bics[i] = bic(likelihoods[i], num_samples, nrow(structure_df), log(num_muts))
     
+    # Original binom_ll with bug
     binom_ll_sample = 0
     for (j in 1:nrow(structure_df)) {
       binom_ll_sample = binom_ll(structure_df$ccf[j], dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
     }
-    binom_ll[i] = binom_ll_sample
+    binom_lls[i] = binom_ll_sample
+    
+    binom_ll_2s[i] = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
+    binom_ll_diffs[i] = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
   }
-  all_metrics = data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_ll)
+  all_metrics = data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs)
   return(all_metrics)
 }
 
-randomclone_unif = function(dat) {
+merge_superclones = function(cluster_locations, cluster_assignments, min_ccf_clone=0.95, max_ccf_clone=1.05) {
+  to_remove = which(cluster_locations > max_ccf_clone)
+  clonal_cluster = which(cluster_locations > min_ccf_clone & cluster_locations < max_ccf_clone)
+  
+  #' Pick highest CCF if multiple clonal candidates
+  if (length(clonal_cluster) > 1) {
+    clonal_cluster = clonal_cluster[which.max(cluster_locations[clonal_cluster])]
+  }
+  
+  cluster_assignments[cluster_assignments %in% to_remove] = clonal_cluster
+  cluster_locations = cluster_locations[-to_remove]
+  
+  #' Reindex the clusters - if needed
+  cluster_ids = unique(cluster_assignments)
+  if (max(cluster_ids) != length(cluster_ids)) {
+    new_assignments = cluster_assignments
+    
+    for (i in 1:length(unique(new_assignments))) {
+      cluster_id = cluster_ids[i]
+      new_assignments[cluster_assignments==cluster_id] = i
+    }
+    cluster_assignments = new_assignments
+  }
+  return(list(cluster_locations=cluster_locations, cluster_assignments=cluster_assignments))
+}
+
+randomclone_unif = function(dat, min_bound_data, max_bound_data, force_clone=F) {
   #' Draw number of clusters
   n_clusters = sample(MIN_CLUSTERS:MAX_CLUSTERS, 1)
   
   #' Get area where 95% of the data lives and set those boundaries as min and max CCF for clusters
-  ccf_boundaries = quantile(dat$subclonal.fraction, probs=c(.025,.975))
+  ccf_boundaries = quantile(dat$subclonal.fraction, probs=c(min_bound_data, max_bound_data))
   
   ccf_min = ccf_boundaries[[1]]
   ccf_max = ccf_boundaries[[2]]
   
   #' Draw clusters from uniform distribution
-  cluster_locations = runif(n_clusters, min=ccf_min, max=ccf_max)
+  cluster_locations = sort(runif(n_clusters, min=ccf_min, max=ccf_max), decreasing=T)
+  if (force_clone) {
+    cluster_locations[sample(1:n_clusters, 1)] = 1
+  }
   
   #' Assign SNVs
   cluster_assignments = sapply(dat$subclonal.fraction, function(x) { which.min(abs(x-cluster_locations)) })
@@ -164,11 +232,33 @@ randomclone_unif = function(dat) {
     cluster_locations[i] = median(dat$subclonal.fraction[cluster_assignments==i], na.rm=T)
   }
   
+  #' Check if there is a superclone found and there is a clone - then merge
+  if (any(cluster_locations > 0.90 & cluster_locations < 1.10) & any(cluster_locations > 1.10)) {
+    res = merge_superclones(cluster_locations, cluster_assignments, min_ccf_clone=0.90, max_ccf_clone=1.10)
+    cluster_locations = res$cluster_locations
+    cluster_assignments = res$cluster_assignments
+  }
+  
+  # #' Merge clusters too close
+  # cluster_pair_distance = cluster_locations[1:(length(cluster_locations)-1)] - cluster_locations[2:length(cluster_locations)]
+  # print(cluster_pair_distance)
+  # if (any((cluster_pair_distance < 0.05) & cluster_locations[1:(length(cluster_locations)-1)] < 0.5)) {
+  #   
+  #   min_index = which.min(cluster_pair_distance)
+  #   # merge cluster_locations[min_index] and cluster_locations[min_index+1]
+  #   print(paste0("MERGING ", cluster_locations[min_index], " with ", cluster_locations[min_index+1]))
+  #   
+  #   
+  #   cluster_assignments[cluster_assignments==min_index+1] = min_index
+  #   cluster_pair_distance = cluster_pair_distance[-(min_index+1)]
+  # }
+  
   structure_df = data.frame(table(cluster_assignments), 
                             proportion=cluster_locations * purity,
                             ccf=cluster_locations)
   colnames(structure_df)[1] = "cluster"
   colnames(structure_df)[2] = "n_ssms"
+  
   return(list(structure=structure_df, assignments=cluster_assignments))
 }
 
