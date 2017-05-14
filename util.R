@@ -7,6 +7,14 @@ parse_data = function(dpclustinput_infile) {
 
 write_output_calibration_format = function(samplename, dat, structure_df, assignments, purity, outdir) {
   
+  # Catch case where simulated data does not contain these columns
+  if (!"frac2" %in% colnames(dat)) {
+    dat$nMaj1 = dat$subclonal.CN
+    dat$nMin1 = 0
+    dat$frac1 = 1
+    dat$frac2 = NA
+  }
+  
   assignments_df = data.frame(chr=dat$chr, 
                               pos=dat$end, 
                               cluster=assignments)
