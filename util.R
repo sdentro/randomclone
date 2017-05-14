@@ -230,8 +230,15 @@ randomclone_unif = function(dat, min_bound_data, max_bound_data, force_clone=F) 
   
   #' Re-adjust the cluster locations based on assignments
   for (i in 1:n_clusters) {
-    cluster_locations[i] = median(dat$subclonal.fraction[cluster_assignments==i], na.rm=T)
+    # Update only when there are mutations assigned
+    if (sum(cluster_assignments==i, na.rm=T) > 0) {
+      cluster_locations[i] = median(dat$subclonal.fraction[cluster_assignments==i], na.rm=T)
+    }
   }
+  
+  print(n_clusters)
+  print(cluster_locations)
+  print(table(cluster_assignments))
   
   #' Check if there is a superclone found and there is a clone - then merge
   if (any(cluster_locations > 0.90 & cluster_locations < 1.10) & any(cluster_locations > 1.10)) {
