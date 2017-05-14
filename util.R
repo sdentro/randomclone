@@ -244,10 +244,6 @@ randomclone_unif = function(dat, min_bound_data, max_bound_data, force_clone=F) 
     }
   }
   
-  print(n_clusters)
-  print(cluster_locations)
-  print(table(cluster_assignments))
-  
   #' Check if there is a superclone found and there is a clone - then merge
   if (any(cluster_locations > 0.90 & cluster_locations < 1.10) & any(cluster_locations > 1.10)) {
     res = merge_superclones(cluster_locations, cluster_assignments, min_ccf_clone=0.90, max_ccf_clone=1.10)
@@ -268,7 +264,7 @@ randomclone_unif = function(dat, min_bound_data, max_bound_data, force_clone=F) 
   #   cluster_assignments[cluster_assignments==min_index+1] = min_index
   #   cluster_pair_distance = cluster_pair_distance[-(min_index+1)]
   # }
-  
+  cluster_assignments = factor(cluster_assignments, levels=1:length(cluster_locations)) 
   structure_df = data.frame(table(cluster_assignments), 
                             proportion=cluster_locations * purity,
                             ccf=cluster_locations)
