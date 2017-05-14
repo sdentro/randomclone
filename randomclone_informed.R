@@ -27,7 +27,7 @@ outdir = args[5]
 # project = "Bladder-TCC"
 
 if (run_assessment) {
-  outdir = file.path("sandbox", samplename)
+  # outdir = file.path("sandbox", samplename)
   outdir_bic = file.path(outdir, "bic")
   outdir_aic = file.path(outdir, "aic")
   outdir_binom = file.path(outdir, "binom")
