@@ -132,6 +132,7 @@ run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q
   source("~/repo/moritz_mut_assignment/util.R")
   
   #' reset cluster numbers
+  clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
   clusters$cluster = 1:nrow(clusters)
   
   #' Load copy number and variants
