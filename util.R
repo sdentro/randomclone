@@ -182,36 +182,71 @@ binom_ll_2 = function(structure_df, mutcount, wtcount, tumourCopyNumber, copyNum
 
 
 
+# calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
+#   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
+#   num_muts = nrow(dat)
+#   num_samples = 1
+#   likelihoods = rep(NA, ITERATIONS)
+#   aics = rep(NA, ITERATIONS)
+#   bics = rep(NA, ITERATIONS)
+#   binom_lls = rep(NA, ITERATIONS)
+#   binom_ll_2s = rep(NA, ITERATIONS)
+#   binom_ll_diffs = rep(NA, ITERATIONS)
+#   mtimer_ll = rep(NA, ITERATIONS)
+#   for (i in 1:ITERATIONS) {
+#     structure_df = res[[i]]$structure
+#     assignments = res[[i]]$assignments
+#     likelihoods[i] = calc.new.likelihood(dat$mut.count, (dat$mut.count+dat$WT.count), kappa, structure_df$ccf)
+#     aics[i] = aic(likelihoods[i], num_samples, nrow(structure_df))
+#     bics[i] = bic(likelihoods[i], num_samples, nrow(structure_df), log(num_muts))
+#     
+#     # Original binom_ll with bug
+#     binom_ll_sample = 0
+#     for (j in 1:nrow(structure_df)) {
+#       binom_ll_sample = binom_ll(structure_df$ccf[j], dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
+#     }
+#     binom_lls[i] = binom_ll_sample
+#     
+#     binom_ll_2s[i] = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
+#     binom_ll_diffs[i] = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
+#     mtimer_ll[i] = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
+#   }
+#   all_metrics = data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll)
+#   return(all_metrics)
+# }
+
 calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
   num_muts = nrow(dat)
   num_samples = 1
-  likelihoods = rep(NA, ITERATIONS)
-  aics = rep(NA, ITERATIONS)
-  bics = rep(NA, ITERATIONS)
-  binom_lls = rep(NA, ITERATIONS)
-  binom_ll_2s = rep(NA, ITERATIONS)
-  binom_ll_diffs = rep(NA, ITERATIONS)
-  mtimer_ll = rep(NA, ITERATIONS)
-  for (i in 1:ITERATIONS) {
+  # likelihoods = rep(NA, ITERATIONS)
+  # aics = rep(NA, ITERATIONS)
+  # bics = rep(NA, ITERATIONS)
+  # binom_lls = rep(NA, ITERATIONS)
+  # binom_ll_2s = rep(NA, ITERATIONS)
+  # binom_ll_diffs = rep(NA, ITERATIONS)
+  # mtimer_ll = rep(NA, ITERATIONS)
+  # for (i in 1:ITERATIONS) {
+  scores = mclapply(1:ITERATIONS, function(i) {
     structure_df = res[[i]]$structure
     assignments = res[[i]]$assignments
-    likelihoods[i] = calc.new.likelihood(dat$mut.count, (dat$mut.count+dat$WT.count), kappa, structure_df$ccf)
-    aics[i] = aic(likelihoods[i], num_samples, nrow(structure_df))
-    bics[i] = bic(likelihoods[i], num_samples, nrow(structure_df), log(num_muts))
+    likelihoods = calc.new.likelihood(dat$mut.count, (dat$mut.count+dat$WT.count), kappa, structure_df$ccf)
+    aics = aic(likelihoods, num_samples, nrow(structure_df))
+    bics = bic(likelihoods, num_samples, nrow(structure_df), log(num_muts))
     
     # Original binom_ll with bug
     binom_ll_sample = 0
     for (j in 1:nrow(structure_df)) {
       binom_ll_sample = binom_ll(structure_df$ccf[j], dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
     }
-    binom_lls[i] = binom_ll_sample
+    binom_lls = binom_ll_sample
     
-    binom_ll_2s[i] = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-    binom_ll_diffs[i] = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-    mtimer_ll[i] = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
-  }
-  all_metrics = data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll)
+    binom_ll_2s = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
+    binom_ll_diffs = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
+    mtimer_ll = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
+    return(data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll))
+  }, mc.cores=MAXCORES)
+  all_metrics = do.call(rbind, scores)
   return(all_metrics)
 }
 
