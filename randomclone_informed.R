@@ -20,6 +20,13 @@ dpclustinput_infile = args[2]
 purity = as.numeric(args[3])
 project = args[4]
 outdir = args[5]
+if (length(args) > 5) {
+  bb_file = args[6]
+  snv_vcf = args[7]
+  ploidy = as.numeric(args[8])
+  sex = args[9]
+  is_wgd = as.logical(args[10])
+}
 
 # samplename = "Sim_500_3"
 # dpclustinput_infile = "test_data/dirichlet_input/Sim_500_003_allDirichletProcessInfo.txt"
@@ -71,7 +78,7 @@ for (i in 1:ITERATIONS) {
 
 #' Calc overall likelihoods for every solution
 save.image("testing.RData")
-all_metrics2 = calc_all_metrics(dat, purity, res) 
+all_metrics2 = calc_all_metrics(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) 
 
 if (run_assessment) {
   #' pick the best solution
