@@ -133,6 +133,7 @@ run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, m
   
   #' Load copy number and variants
   bb <- loadBB(bb_file)
+  bb$clonal_frequency = 1
   vcf_snv <- readVcf(vcf_snv, genome="GRCh37")
   #' Merge too close clusters
   if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
