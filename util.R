@@ -188,7 +188,7 @@ calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_
   binom_lls = rep(NA, ITERATIONS)
   binom_ll_2s = rep(NA, ITERATIONS)
   binom_ll_diffs = rep(NA, ITERATIONS)
-  mtimer = rep(NA, ITERATIONS)
+  mtimer_ll = rep(NA, ITERATIONS)
   for (i in 1:ITERATIONS) {
     structure_df = res[[i]]$structure
     assignments = res[[i]]$assignments
