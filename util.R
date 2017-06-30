@@ -309,6 +309,13 @@ randomclone_stick = function(dat, force_clone=F) {
   }
   cluster_locations = cluster_locations[!is.na(cluster_locations)]
   
+  #' Check if there is a superclone found and there is a clone - then merge
+  if (any(cluster_locations > 0.90 & cluster_locations < 1.10) & any(cluster_locations > 1.10)) {
+    res = merge_superclones(cluster_locations, cluster_assignments, min_ccf_clone=0.90, max_ccf_clone=1.10)
+    cluster_locations = res$cluster_locations
+    cluster_assignments = res$cluster_assignments
+  }
+  
   #' Shift one cluster to be at exactly 1
   if (force_clone) {
     cluster_locations[which.min(abs(1-cluster_locations))] = 1
