@@ -4,12 +4,14 @@
 #' 
 # set.seed(123) 
 source("~/repo/randomclone/util.R")
+library(multicore)
 MIN_CLUSTERS = 1
 MAX_CLUSTERS = 5
 ITERATIONS = 100
 FORCE_CLONE = T
 MIN_BOUND_DATA = .025
 MAX_BOUND_DATA = .975
+MAXCORES = 6
 
 usemethod = "stick"
 run_assessment = T
@@ -25,7 +27,7 @@ if (length(args) > 5) {
   vcf_snv = args[7]
   ploidy = as.numeric(args[8])
   sex = args[9]
-  is_wgd = as.logical(args[10])
+  is_wgd = args[10]=="wgd"
 }
 
 # samplename = "Sim_500_3"
@@ -60,17 +62,28 @@ if (nrow(dat) < 2) {
 }
 
 #' Run the method
-res = list()
-for (i in 1:ITERATIONS) {
+# res = list()
+# for (i in 1:ITERATIONS) {
+#   if (usemethod=="unif") {
+#     res[[i]] = randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE)
+#   } else if (usemethod=="stick") {
+#     res[[i]] = randomclone_stick(dat, force_clone=FORCE_CLONE)
+#   } else {
+#     print(paste0("Uknown method ", usemethod))
+#     q(save="no", status=1)
+#   }
+# }
+
+res = mclapply(1:ITERATIONS, function(i) {
   if (usemethod=="unif") {
-    res[[i]] = randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE)
+    return(randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE))
   } else if (usemethod=="stick") {
-    res[[i]] = randomclone_stick(dat, force_clone=FORCE_CLONE)
+    return(randomclone_stick(dat, force_clone=FORCE_CLONE))
   } else {
     print(paste0("Uknown method ", usemethod))
     q(save="no", status=1)
   }
-}
+}, mc.cores=MAXCORES)
 
 # for (i in ITERATIONS:(ITERATIONS*2)) {
 #   res[[i]] = randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=!FORCE_CLONE)
