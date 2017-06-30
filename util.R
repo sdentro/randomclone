@@ -131,6 +131,9 @@ run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q
   source("~/repo/moritz_mut_assignment/MutationTime.R")
   source("~/repo/moritz_mut_assignment/util.R")
   
+  #' reset cluster numbers
+  clusters$cluster = 1:nrow(clusters)
+  
   #' Load copy number and variants
   bb <- loadBB(bb_file)
   bb$clonal_frequency = 1
