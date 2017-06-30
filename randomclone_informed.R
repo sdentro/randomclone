@@ -34,6 +34,7 @@ if (run_assessment) {
   outdir_binom_2 = file.path(outdir, "binom_2")
   outdir_binom_diff = file.path(outdir, "binom_diff")
   outdir_ll = file.path(outdir, "ll")
+  outdir_mtimer = file.path(outdir, "mtimer")
   if (!file.exists(outdir)) { dir.create(outdir) }
   if (!file.exists(outdir_bic)) { dir.create(outdir_bic) }
   if (!file.exists(outdir_binom)) { dir.create(outdir_binom) }
@@ -41,6 +42,7 @@ if (run_assessment) {
   if (!file.exists(outdir_binom_diff)) { dir.create(outdir_binom_diff) }
   if (!file.exists(outdir_aic)) { dir.create(outdir_aic) }
   if (!file.exists(outdir_ll)) { dir.create(outdir_ll) }
+  if (!file.exists(outdir_mtimer)) { dir.create(outdir_mtimer) }
 }
 
 #' Load the data
@@ -68,6 +70,7 @@ for (i in 1:ITERATIONS) {
 # }
 
 #' Calc overall likelihoods for every solution
+save.image("testing.RData")
 all_metrics2 = calc_all_metrics(dat, purity, res) 
 
 if (run_assessment) {
@@ -77,7 +80,8 @@ if (run_assessment) {
   best_ll = which.min(all_metrics2$likelihood)
   best_binom = which.min(all_metrics2$binom_ll)
   best_binom_2 = which.min(all_metrics2$binom_ll_2)
-  best_binom_diff = which.min(all_metrics2$binom_ll_diff)
+  # best_binom_diff = which.min(all_metrics2$binom_ll_diff)
+  best_mtimer = which.min(all_metrics2$mtimer_ll)
   
   #' Write the output
   save_output = function(res, best_index, outdir) {
@@ -91,6 +95,7 @@ if (run_assessment) {
   save_output(res, best_aic, outdir_aic)
   save_output(res, best_binom, outdir_binom)
   save_output(res, best_binom_2, outdir_binom_2)
+  save_output(res, best_mtimer, outdir_mtimer)
   # save_output(res, best_binom_diff, outdir_binom_diff)
 } else {
   best_binom = which.min(all_metrics2$binom_ll)
@@ -138,12 +143,15 @@ if (run_assessment) {
 
   binom_2_struct = read.table(file.path(outdir_binom_2, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   binom_2_plot = make_plot(binom_2_struct, baseplot, "binomial_2")
+  
+  mtimer_struct = read.table(file.path(outdir_mtimer, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
+  mtimer_plot = make_plot(mtimer_struct, baseplot, "mtimer")
 
   # binom_diff_struct = read.table(file.path(outdir_binom_diff, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   # binom_diff_plot = make_plot(binom_diff_struct, baseplot, "binomial_diff")
 
   png(file.path(outdir, paste0(samplename, "_solutions.png")), height=700, width=1000)
-  grid.arrange(truth_plot, binom_plot, binom_2_plot, aic_plot, bic_plot, ll_plot, ncol=2,
+  grid.arrange(truth_plot, binom_plot, binom_2_plot, mtimer_plot, bic_plot, ll_plot, ncol=2,
                top=paste0(samplename, " - min_lust=", MIN_CLUSTERS, " max_lust=", MAX_CLUSTERS, " iters=", ITERATIONS, " force_clone=", FORCE_CLONE, " min_data=", MIN_BOUND_DATA, " max_data=", MAX_BOUND_DATA))
   dev.off()
 }
