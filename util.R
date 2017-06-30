@@ -244,15 +244,15 @@ randomclone_unif = function(dat, min_bound_data, max_bound_data, force_clone=F) 
     }
   }
   
-  print(n_clusters)
-  print(cluster_locations)
-  print(table(cluster_assignments))
-  
   #' Check if there is a superclone found and there is a clone - then merge
   if (any(cluster_locations > 0.90 & cluster_locations < 1.10) & any(cluster_locations > 1.10)) {
     res = merge_superclones(cluster_locations, cluster_assignments, min_ccf_clone=0.90, max_ccf_clone=1.10)
     cluster_locations = res$cluster_locations
     cluster_assignments = res$cluster_assignments
+  }
+  
+  if (force_clone) {
+    cluster_locations[which.min(abs(1-cluster_locations))] = 1
   }
   
   # #' Merge clusters too close
@@ -278,7 +278,7 @@ randomclone_unif = function(dat, min_bound_data, max_bound_data, force_clone=F) 
   return(list(structure=structure_df, assignments=cluster_assignments))
 }
 
-randomclone_stick = function(dat) {
+randomclone_stick = function(dat, force_clone=F) {
   #' Draw number of clusters
   n_clusters = sample(MIN_CLUSTERS:MAX_CLUSTERS, 1)
   
@@ -308,6 +308,11 @@ randomclone_stick = function(dat) {
     cluster_locations[i] = median(dat$subclonal.fraction[assignments==i], na.rm=T)
   }
   cluster_locations = cluster_locations[!is.na(cluster_locations)]
+  
+  #' Shift one cluster to be at exactly 1
+  if (force_clone) {
+    cluster_locations[which.min(abs(1-cluster_locations))] = 1
+  }
   
   structure_df = data.frame(table(assignments), 
                             proportion=cluster_locations * purity,
