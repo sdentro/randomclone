@@ -176,7 +176,7 @@ binom_ll_2 = function(structure_df, mutcount, wtcount, tumourCopyNumber, copyNum
 
 
 
-calc_all_metrics = function(dat, purity, res, cluster_location, vcf_snv, bb_file, ploidy, sex, is_wgd, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
+calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
   num_muts = nrow(dat)
   num_samples = 1
