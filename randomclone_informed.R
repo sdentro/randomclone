@@ -78,7 +78,7 @@ for (i in 1:ITERATIONS) {
 
 #' Calc overall likelihoods for every solution
 save.image("testing.RData")
-all_metrics2 = calc_all_metrics(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) 
+all_metrics2 = calc_all_metrics(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) 
 
 if (run_assessment) {
   #' pick the best solution
