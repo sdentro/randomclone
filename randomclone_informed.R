@@ -6,7 +6,7 @@
 source("~/repo/randomclone/util.R")
 MIN_CLUSTERS = 1
 MAX_CLUSTERS = 5
-ITERATIONS = 10
+ITERATIONS = 100
 FORCE_CLONE = T
 MIN_BOUND_DATA = .025
 MAX_BOUND_DATA = .975
@@ -56,7 +56,7 @@ for (i in 1:ITERATIONS) {
   if (usemethod=="unif") {
     res[[i]] = randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE)
   } else if (usemethod=="stick") {
-    res[[i]] = randomclone_stick(dat)
+    res[[i]] = randomclone_stick(dat, force_clone=FORCE_CLONE)
   } else {
     print(paste0("Uknown method ", usemethod))
     q(save="no", status=1)
@@ -119,8 +119,10 @@ if (run_assessment) {
 
   baseplot = make_base_plot(dat)
 
-  truth = read.table(paste0("test_data/truth/Subclonal_Structure/", samplename, ".subclonal_structure.txt"), header=T, stringsAsFactors=F)
-  truth_plot = make_plot(truth, baseplot, "truth", line_colour="green")
+  #truth = read.table(paste0("test_data/truth/Subclonal_Structure/", samplename, ".subclonal_structure.txt"), header=T, stringsAsFactors=F)
+  #truth_plot = make_plot(truth, baseplot, "truth", line_colour="green")
+  temp_dat = data.frame(ccf=1)
+  truth_plot = make_plot(temp_dat, baseplot, "placeholder", line_colour="green")
 
   aic_struct = read.table(file.path(outdir_aic, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   aic_plot = make_plot(aic_struct, baseplot, "aic")
