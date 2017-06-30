@@ -204,7 +204,7 @@ calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_
     
     binom_ll_2s[i] = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
     binom_ll_diffs[i] = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-    mtimer_ll = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
+    mtimer_ll[i] = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
   }
   all_metrics = data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll)
   return(all_metrics)
