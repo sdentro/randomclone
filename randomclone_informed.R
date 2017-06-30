@@ -25,7 +25,7 @@ if (length(args) > 5) {
   vcf_snv = args[7]
   ploidy = as.numeric(args[8])
   sex = args[9]
-  is_wgd = as.logical(args[10])
+  is_wgd = args[10]=="wgd"
 }
 
 # samplename = "Sim_500_3"
