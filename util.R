@@ -131,8 +131,9 @@ run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, m
   source("~/repo/moritz_mut_assignment/MutationTime.R")
   source("~/repo/moritz_mut_assignment/util.R")
   
-  #' Load copy number
+  #' Load copy number and variants
   bb <- loadBB(bb_file)
+  vcf_snv <- readVcf(vcf_snv, genome="GRCh37")
   #' Merge too close clusters
   if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
   #' Calc assignment probs
