@@ -4,7 +4,7 @@
 #' 
 # set.seed(123) 
 source("~/repo/randomclone/util.R")
-library(multicore)
+library(parallel)
 MIN_CLUSTERS = 1
 MAX_CLUSTERS = 5
 ITERATIONS = 100
@@ -121,6 +121,7 @@ if (run_assessment) {
   best_binom = which.min(all_metrics2$binom_ll)
 }
 
+save.image("testing2.RData")
 if (run_assessment) {
   #' Make postprocess figure
   library(ggplot2)
