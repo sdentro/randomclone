@@ -134,7 +134,7 @@ run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, m
   #' Load copy number
   bb <- loadBB(bb_file)
   #' Merge too close clusters
-  if (merge_clusters & nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
+  if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
   #' Calc assignment probs
   MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0)
   #' Calc tail probabilities  
