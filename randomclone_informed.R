@@ -22,7 +22,7 @@ project = args[4]
 outdir = args[5]
 if (length(args) > 5) {
   bb_file = args[6]
-  snv_vcf = args[7]
+  vcf_snv = args[7]
   ploidy = as.numeric(args[8])
   sex = args[9]
   is_wgd = as.logical(args[10])
