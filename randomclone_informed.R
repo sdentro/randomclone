@@ -3,32 +3,37 @@
 #' Rscript randomclone_unif.R 1e27cc8a-5394-4958-9af6-5ece1fe24516 1e27cc8a-5394-4958-9af6-5ece1fe24516_allDirichletProcessInfo.txt 0.77 GBM-US output/unif/
 #' 
 # set.seed(123) 
-source("~/repo/randomclone/util.R")
-library(parallel)
 MIN_CLUSTERS = 1
 MAX_CLUSTERS = 5
 ITERATIONS = 100
 FORCE_CLONE = T
 MIN_BOUND_DATA = .025
 MAX_BOUND_DATA = .975
-MAXCORES = 6
+MAXCORES = 10
 
 usemethod = "stick"
-run_assessment = T
+run_assessment = F
+round_subclonal_cn = F
+remove_subclonal_cn = F
 
 args = commandArgs(T)
-samplename = args[1]
-dpclustinput_infile = args[2]
-purity = as.numeric(args[3])
-project = args[4]
-outdir = args[5]
-if (length(args) > 5) {
-  bb_file = args[6]
-  vcf_snv = args[7]
-  ploidy = as.numeric(args[8])
-  sex = args[9]
-  is_wgd = args[10]=="wgd"
+libpath = args[1]
+mtimer_libpath = args[2]
+samplename = args[3]
+dpclustinput_infile = args[4]
+purity = as.numeric(args[5])
+project = args[6]
+outdir = args[7]
+if (length(args) > 7) {
+  bb_file = args[8]
+  vcf_snv = args[9]
+  ploidy = as.numeric(args[10])
+  sex = args[11]
+  is_wgd = args[12]=="wgd"
 }
+
+source(file.path(libpath, "util.R"))
+library(parallel)
 
 # samplename = "Sim_500_3"
 # dpclustinput_infile = "test_data/dirichlet_input/Sim_500_003_allDirichletProcessInfo.txt"
@@ -73,7 +78,10 @@ if (nrow(dat) < 2) {
 #     q(save="no", status=1)
 #   }
 # }
-
+for (i in 1:ITERATIONS) {
+	randomclone_stick(dat, force_clone=FORCE_CLONE)
+}
+print(randomclone_stick(dat, force_clone=FORCE_CLONE))
 res = mclapply(1:ITERATIONS, function(i) {
   if (usemethod=="unif") {
     return(randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE))
@@ -90,8 +98,7 @@ res = mclapply(1:ITERATIONS, function(i) {
 # }
 
 #' Calc overall likelihoods for every solution
-save.image("testing.RData")
-all_metrics2 = calc_all_metrics(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, xmin=3) 
+all_metrics2 = calc_all_metrics(mtimer_libpath, dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=round_subclonal_cn, remove_subclonal_cn=remove_subclonal_cn, xmin=3) 
 
 if (run_assessment) {
   #' pick the best solution
@@ -118,10 +125,10 @@ if (run_assessment) {
   save_output(res, best_mtimer, outdir_mtimer)
   # save_output(res, best_binom_diff, outdir_binom_diff)
 } else {
-  best_binom = which.min(all_metrics2$binom_ll)
+  #best_binom = which.min(all_metrics2$binom_ll)
+  best_mtimer = which.min(all_metrics2$mtimer_ll)
 }
 
-save.image("testing2.RData")
 if (run_assessment) {
   #' Make postprocess figure
   library(ggplot2)
@@ -137,7 +144,7 @@ if (run_assessment) {
 
   make_plot = function(cluster_locs, baseplot, plot_title, line_colour="red") {
     p = baseplot$baseplot
-    max_height = baseplot$max_height
+    cluster_locs$max_height = baseplot$max_height
     p = p + geom_segment(data=cluster_locs, mapping=aes(x=ccf, xend=ccf, y=0, yend=max_height + 10), colour=line_colour)
     p = p + ggtitle(plot_title)
     return(p)
@@ -152,22 +159,21 @@ if (run_assessment) {
 
   aic_struct = read.table(file.path(outdir_aic, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   aic_plot = make_plot(aic_struct, baseplot, "aic")
-
+  
   bic_struct = read.table(file.path(outdir_bic, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   bic_plot = make_plot(bic_struct, baseplot, "bic")
-
+  
   ll_struct = read.table(file.path(outdir_ll, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   ll_plot = make_plot(ll_struct, baseplot, "log-likelihood")
-
+  
   binom_struct = read.table(file.path(outdir_binom, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   binom_plot = make_plot(binom_struct, baseplot, "binomial")
-
+  
   binom_2_struct = read.table(file.path(outdir_binom_2, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   binom_2_plot = make_plot(binom_2_struct, baseplot, "binomial_2")
   
   mtimer_struct = read.table(file.path(outdir_mtimer, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   mtimer_plot = make_plot(mtimer_struct, baseplot, "mtimer")
-
   # binom_diff_struct = read.table(file.path(outdir_binom_diff, paste0(samplename, "_subclonal_structure.txt")), header=T, stringsAsFactors=F)
   # binom_diff_plot = make_plot(binom_diff_struct, baseplot, "binomial_diff")
 
@@ -178,7 +184,7 @@ if (run_assessment) {
 }
 
 #' Write the output - taking best_binom as best solution
-write_output_calibration_format(samplename, dat, res[[best_binom]]$structure, res[[best_binom]]$assignments, purity, outdir)
-write_output_summary_table(res[[best_binom]]$structure, outdir, samplename, project, purity)
+write_output_calibration_format(samplename, dat, res[[best_mtimer]]$structure, res[[best_mtimer]]$assignments, purity, outdir)
+write_output_summary_table(res[[best_mtimer]]$structure, outdir, samplename, project, purity)
 
 

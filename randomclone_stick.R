@@ -3,16 +3,18 @@
 #' Rscript randomclone_stick.R 1e27cc8a-5394-4958-9af6-5ece1fe24516 1e27cc8a-5394-4958-9af6-5ece1fe24516_allDirichletProcessInfo.txt 0.77 GBM-US output/stick/
 #' 
 # set.seed(123)
-source("~/repo/randomclone/util.R")
 MIN_CLUSTERS = 1
 MAX_CLUSTERS = 5
 
 args = commandArgs(T)
-samplename = args[1]
-dpclustinput_infile = args[2]
-purity = as.numeric(args[3])
-project = args[4]
-outdir = args[5]
+libpath = args[1]
+samplename = args[2]
+dpclustinput_infile = args[3]
+purity = as.numeric(args[4])
+project = args[5]
+outdir = args[6]
+
+source(file.path(libpath, "util.R"))
 
 #' Load the data
 dat = parse_data(dpclustinput_infile)
