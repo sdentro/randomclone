@@ -127,9 +127,10 @@ binom_ll = function(cluster_location, mutcount, wtcount, tumourCopyNumber, copyN
   return(sum(assignment_ll))
 }
 
-run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
-  source("~/repo/moritz_mut_assignment/MutationTime.R")
+run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, xmin=3) {
+  # source("~/repo/moritz_mut_assignment/MutationTime.R")
   source("~/repo/moritz_mut_assignment/util.R")
+  source("~/repo/MutationTime.R")
   
   #' reset cluster numbers
   clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
@@ -142,7 +143,7 @@ run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q
   #' Merge too close clusters
   if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
   #' Calc assignment probs
-  MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0)
+  MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0, xmin=xmin)
   #' Calc tail probabilities  
   qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
   # p_snv = pbinom(sum(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN$D), 0.05, lower.tail=TRUE)
@@ -215,7 +216,7 @@ binom_ll_2 = function(structure_df, mutcount, wtcount, tumourCopyNumber, copyNum
 #   return(all_metrics)
 # }
 
-calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
+calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, xmin=3) {
   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
   num_muts = nrow(dat)
   num_samples = 1
@@ -243,7 +244,7 @@ calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_
     
     binom_ll_2s = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
     binom_ll_diffs = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-    mtimer_ll = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
+    mtimer_ll = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq, xmin=xmin)
     return(data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll))
   }, mc.cores=MAXCORES)
   all_metrics = do.call(rbind, scores)
