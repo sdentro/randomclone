@@ -127,16 +127,16 @@ binom_ll = function(cluster_location, mutcount, wtcount, tumourCopyNumber, copyN
   return(sum(assignment_ll))
 }
 
-run_mtimer = function(clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
-  source("~/repo/moritz_mut_assignment/MutationTime.R")
-  source("~/repo/moritz_mut_assignment/util.R")
+run_mtimer = function(libpath, clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=F, remove_subclonal_cn=F) {
+  source(file.path(libpath, "MutationTime.R"))
+  source(file.path(libpath, "util.R"))
   
   #' reset cluster numbers
   clusters = clusters[with(clusters, order(proportion, decreasing=T)),]
   clusters$cluster = 1:nrow(clusters)
   
   #' Load copy number and variants
-  bb <- loadBB(bb_file)
+  bb <- loadBB(bb_file, round_subclones=round_subclonal_cn, remove_subclones=remove_subclonal_cn)
   bb$clonal_frequency = 1
   vcf_snv <- readVcf(vcf_snv, genome="GRCh37")
   #' Merge too close clusters
@@ -215,7 +215,7 @@ binom_ll_2 = function(structure_df, mutcount, wtcount, tumourCopyNumber, copyNum
 #   return(all_metrics)
 # }
 
-calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
+calc_all_metrics = function(mtimer_libpath, dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=F, remove_subclonal_cn=F) {
   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
   num_muts = nrow(dat)
   num_samples = 1
@@ -243,7 +243,7 @@ calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_
     
     binom_ll_2s = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
     binom_ll_diffs = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-    mtimer_ll = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
+    mtimer_ll = run_mtimer(mtimer_libpath, structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
     return(data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll))
   }, mc.cores=MAXCORES)
   all_metrics = do.call(rbind, scores)
@@ -252,19 +252,28 @@ calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_
 
 merge_superclones = function(cluster_locations, cluster_assignments, min_ccf_clone=0.95, max_ccf_clone=1.05) {
   to_remove = which(cluster_locations > max_ccf_clone)
-  clonal_cluster = which(cluster_locations > min_ccf_clone & cluster_locations < max_ccf_clone)
-  
+  if (any(cluster_locations > min_ccf_clone & cluster_locations < max_ccf_clone)) {
+    clonal_cluster = which(cluster_locations > min_ccf_clone & cluster_locations < max_ccf_clone)
+  } else if (sum(cluster_locations > max_ccf_clone) > 1) {
+    # no clone, but multiple superclones
+    clonal_cluster = to_remove[which.min(abs(1-cluster_locations[cluster_locations > max_ccf_clone]))]
+    to_remove = to_remove[!to_remove %in% clonal_cluster]
+  } else {
+    # no clone and the single superclone, that is the clone, leave it in place
+    return(list(cluster_locations=cluster_locations, cluster_assignments=cluster_assignments))
+  } 
+
   #' Pick highest CCF if multiple clonal candidates
   if (length(clonal_cluster) > 1) {
     clonal_cluster = clonal_cluster[which.max(cluster_locations[clonal_cluster])]
   }
-  
+
   cluster_assignments[cluster_assignments %in% to_remove] = clonal_cluster
   cluster_locations = cluster_locations[-to_remove]
   
   #' Reindex the clusters - if needed
   cluster_ids = unique(cluster_assignments)
-  if (max(cluster_ids) != length(cluster_ids)) {
+  if (max(cluster_ids, na.rm=T) != length(cluster_ids)) {
     new_assignments = cluster_assignments
     
     for (i in 1:length(unique(new_assignments))) {
@@ -346,20 +355,23 @@ randomclone_stick = function(dat, force_clone=F) {
   assignments = rep(NA, nrow(dat))
   if (n_clusters > 1) {
     #' Put n-1 breaks
-    breaks = sample(1:nrow(dat), n_clusters-1)
+    breaks = sort(sample(2:nrow(dat), n_clusters-1), decreasing=F)
     
     #' for the n clusters take median CCF as the cluster locations
+    previous = 0
     for (i in 1:length(breaks)) {
       cluster_break = breaks[i]
-      assignments[snv_order < cluster_break] = i
+      assignments[snv_order >= previous & snv_order < cluster_break] = i
+      previous = cluster_break
     }
+
   } else {
     cluster_break = 0
     i = 0
   }
   
   #' Assign SNVs of the final cluster
-  assignments[snv_order > cluster_break] = i+1
+  assignments[snv_order >= cluster_break] = i+1
   
   #' Determine cluster locations
   cluster_locations = rep(NA, n_clusters)
@@ -367,23 +379,26 @@ randomclone_stick = function(dat, force_clone=F) {
     cluster_locations[i] = median(dat$subclonal.fraction[assignments==i], na.rm=T)
   }
   cluster_locations = cluster_locations[!is.na(cluster_locations)]
-  
+
   #' Check if there is a superclone found and there is a clone - then merge
   if (any(cluster_locations > 0.90 & cluster_locations < 1.10) & any(cluster_locations > 1.10)) {
-    res = merge_superclones(cluster_locations, cluster_assignments, min_ccf_clone=0.90, max_ccf_clone=1.10)
+    res = merge_superclones(cluster_locations, assignments, min_ccf_clone=0.90, max_ccf_clone=1.10)
     cluster_locations = res$cluster_locations
-    cluster_assignments = res$cluster_assignments
+    assignments = res$cluster_assignments
   }
   
   #' Shift one cluster to be at exactly 1
   if (force_clone) {
     cluster_locations[which.min(abs(1-cluster_locations))] = 1
   }
-  
+
   structure_df = data.frame(table(assignments), 
                             proportion=cluster_locations * purity,
                             ccf=cluster_locations)
   colnames(structure_df)[1] = "cluster"
   colnames(structure_df)[2] = "n_ssms"
+
+  # remove emoty clusters
+  structure_df = structure_df[structure_df$n_ssms > 0,]
   return(list(structure=structure_df, assignments=assignments))
 }

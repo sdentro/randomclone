@@ -1,16 +1,17 @@
 #' Method that takes mutations and assigns all of them to 1 cluster and takes the median CCF of the SNVs as the cluster CCF
 #' 
 #' Rscript randomclone_single.R 1e27cc8a-5394-4958-9af6-5ece1fe24516 1e27cc8a-5394-4958-9af6-5ece1fe24516_allDirichletProcessInfo.txt 0.77 GBM-US output/single/
-source("~/repo/randomclone/util.R")
-FORCE_CLONE = F
+FORCE_CLONE = T
 
 args = commandArgs(T)
-samplename = args[1]
-dpclustinput_infile = args[2]
-purity = as.numeric(args[3])
-project = args[4]
-outdir = args[5]
+libpath = args[1]
+samplename = args[2]
+dpclustinput_infile = args[3]
+purity = as.numeric(args[4])
+project = args[5]
+outdir = args[6]
 
+source(file.path(libpath,"util.R"))
 #' Load the data
 dat = parse_data(dpclustinput_infile)
 if (nrow(dat) < 2) {
