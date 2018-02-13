@@ -181,7 +181,7 @@ if (run_assessment) {
 }
 
 #' Write the output - taking best_binom as best solution
-write_output_calibration_format(samplename, dat, res[[best_mtimer]]$structure, res[[best_mtimer]]$assignments, purity, outdir)
+#write_output_calibration_format(samplename, dat, res[[best_mtimer]]$structure, res[[best_mtimer]]$assignments, purity, outdir)
 #write_output_summary_table(res[[best_mtimer]]$structure, outdir, samplename, project, purity)
-
-
+write.table(res[[best_mtimer]]$structure, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), row.names=F, sep="\t", quote=F)
+save.image(res, file=file.path(outdir, paste0(samplename, "_randomclone_informed_models.RData")))
