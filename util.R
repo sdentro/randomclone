@@ -129,7 +129,7 @@ binom_ll = function(cluster_location, mutcount, wtcount, tumourCopyNumber, copyN
 
 run_mtimer = function(libpath, clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=F, remove_subclonal_cn=F, xmin=3) {
   # source(file.path(libpath, "MutationTime.R"))
-  source("~/repo/MutationTime.R")
+  source("~/repo/MutationTime.R/MutationTime.R")
   source(file.path(libpath, "util.R"))
   
   #' reset cluster numbers
@@ -143,7 +143,7 @@ run_mtimer = function(libpath, clusters, vcf_snv, bb_file, purity, ploidy, sex, 
   #' Merge too close clusters
   if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
   #' Calc assignment probs
-  MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, deltaFreq=deltaFreq, n.boot=0, xmin=xmin)
+  MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin)
   #' Calc tail probabilities  
   qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
   # p_snv = pbinom(sum(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN$D), 0.05, lower.tail=TRUE)
@@ -229,6 +229,12 @@ calc_all_metrics = function(mtimer_libpath, dat, purity, res, vcf_snv, bb_file, 
   # binom_ll_diffs = rep(NA, ITERATIONS)
   # mtimer_ll = rep(NA, ITERATIONS)
   # for (i in 1:ITERATIONS) {
+  #	  structure_df = res[[i]]$structure
+  #	      assignments = res[[i]]$assignments
+  #	  mtimer_ll = run_mtimer(mtimer_libpath, structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq, xmin=xmin)
+  #}
+
+
   scores = mclapply(1:ITERATIONS, function(i) {
     structure_df = res[[i]]$structure
     assignments = res[[i]]$assignments
