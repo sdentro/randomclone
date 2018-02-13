@@ -10,7 +10,7 @@ outdir = args[5]
 
 summ = readr::read_tsv(summary_table_mtimer_file)
 anno = readr::read_tsv(summary_table_randomclone_file)
-unlink(summary_table_mtimer_file, summary_table_randomclone_file)
+unlink(c(summary_table_mtimer_file, summary_table_randomclone_file), recursive=F)
 
 structure = readr::read_tsv(subclonal_structure_file)
 
