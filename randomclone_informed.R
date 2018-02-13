@@ -14,7 +14,7 @@ MAXCORES = 10
 usemethod = "stick"
 run_assessment = F
 round_subclonal_cn = F
-remove_subclonal_cn = F
+remove_subclonal_cn = T
 
 args = commandArgs(T)
 libpath = args[1]
@@ -78,10 +78,7 @@ if (nrow(dat) < 2) {
 #     q(save="no", status=1)
 #   }
 # }
-for (i in 1:ITERATIONS) {
-	randomclone_stick(dat, force_clone=FORCE_CLONE)
-}
-print(randomclone_stick(dat, force_clone=FORCE_CLONE))
+
 res = mclapply(1:ITERATIONS, function(i) {
   if (usemethod=="unif") {
     return(randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE))
@@ -98,7 +95,7 @@ res = mclapply(1:ITERATIONS, function(i) {
 # }
 
 #' Calc overall likelihoods for every solution
-all_metrics2 = calc_all_metrics(mtimer_libpath, dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=round_subclonal_cn, remove_subclonal_cn=remove_subclonal_cn, xmin=3) 
+all_metrics2 = calc_all_metrics(mtimer_libpath, dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=round_subclonal_cn, remove_subclonal_cn=remove_subclonal_cn, xmin=0) 
 
 if (run_assessment) {
   #' pick the best solution
@@ -185,6 +182,6 @@ if (run_assessment) {
 
 #' Write the output - taking best_binom as best solution
 write_output_calibration_format(samplename, dat, res[[best_mtimer]]$structure, res[[best_mtimer]]$assignments, purity, outdir)
-write_output_summary_table(res[[best_mtimer]]$structure, outdir, samplename, project, purity)
+#write_output_summary_table(res[[best_mtimer]]$structure, outdir, samplename, project, purity)
 
 
