@@ -127,9 +127,9 @@ binom_ll = function(cluster_location, mutcount, wtcount, tumourCopyNumber, copyN
   return(sum(assignment_ll))
 }
 
-run_mtimer = function(libpath, clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=F, remove_subclonal_cn=F, xmin=3) {
-  # source(file.path(libpath, "MutationTime.R"))
-  source("~/repo/MutationTime.R/MutationTime.R")
+run_mtimer = function(libpath, mtimerpath, clusters, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=F, remove_subclonal_cn=F, xmin=3) {
+  source(file.path(mtimerpath, "MutationTime.R"))
+  #source("~/repo/MutationTime.R/MutationTime.R")
   source(file.path(libpath, "util.R"))
   
   #' reset cluster numbers
@@ -143,7 +143,7 @@ run_mtimer = function(libpath, clusters, vcf_snv, bb_file, purity, ploidy, sex, 
   #' Merge too close clusters
   if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff) }
   #' Calc assignment probs
-  MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin)
+  MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=rho_snv, n.boot=0, xmin=xmin, deltaFreq=deltaFreq)
   #' Calc tail probabilities  
   qq_snv <- mean(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T)
   # p_snv = pbinom(sum(MCN$D$pMutCNTail < q/2 | MCN$D$pMutCNTail > 1-q/2, na.rm=T), nrow(MCN$D), 0.05, lower.tail=TRUE)
@@ -183,40 +183,7 @@ binom_ll_2 = function(structure_df, mutcount, wtcount, tumourCopyNumber, copyNum
 
 
 
-# calc_all_metrics = function(dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00) {
-#   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
-#   num_muts = nrow(dat)
-#   num_samples = 1
-#   likelihoods = rep(NA, ITERATIONS)
-#   aics = rep(NA, ITERATIONS)
-#   bics = rep(NA, ITERATIONS)
-#   binom_lls = rep(NA, ITERATIONS)
-#   binom_ll_2s = rep(NA, ITERATIONS)
-#   binom_ll_diffs = rep(NA, ITERATIONS)
-#   mtimer_ll = rep(NA, ITERATIONS)
-#   for (i in 1:ITERATIONS) {
-#     structure_df = res[[i]]$structure
-#     assignments = res[[i]]$assignments
-#     likelihoods[i] = calc.new.likelihood(dat$mut.count, (dat$mut.count+dat$WT.count), kappa, structure_df$ccf)
-#     aics[i] = aic(likelihoods[i], num_samples, nrow(structure_df))
-#     bics[i] = bic(likelihoods[i], num_samples, nrow(structure_df), log(num_muts))
-#     
-#     # Original binom_ll with bug
-#     binom_ll_sample = 0
-#     for (j in 1:nrow(structure_df)) {
-#       binom_ll_sample = binom_ll(structure_df$ccf[j], dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-#     }
-#     binom_lls[i] = binom_ll_sample
-#     
-#     binom_ll_2s[i] = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-#     binom_ll_diffs[i] = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-#     mtimer_ll[i] = run_mtimer(structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq)
-#   }
-#   all_metrics = data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll)
-#   return(all_metrics)
-# }
-
-calc_all_metrics = function(mtimer_libpath, dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=F, remove_subclonal_cn=F, xmin=3) {
+calc_all_metrics = function(util_libpath, mtimer_libpath, dat, purity, res, vcf_snv, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=F, remove_subclonal_cn=F, xmin=3) {
 
   kappa = mutationCopyNumberToMutationBurden(1, dat$subclonal.CN, purity) * dat$no.chrs.bearing.mut
   num_muts = nrow(dat)
@@ -251,7 +218,7 @@ calc_all_metrics = function(mtimer_libpath, dat, purity, res, vcf_snv, bb_file, 
     
     binom_ll_2s = binom_ll_2(structure_df, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
     binom_ll_diffs = binom_ll_diff(structure_df, assignments, dat$mut.count, dat$WT.count, dat$subclonal.CN, dat$no.chrs.bearing.mut, purity, rep(2, nrow(dat)))
-    mtimer_ll = run_mtimer(mtimer_libpath, structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq, xmin=xmin)
+    mtimer_ll = run_mtimer(util_libpath, mtimer_libpath, structure_df, vcf_snv, bb_file, purity, ploidy, sex, is_wgd, q=q, min_read_diff=min_read_diff, rho_snv=rho_snv, deltaFreq=deltaFreq, xmin=xmin)
     return(data.frame(likelihood=likelihoods, aic=aics, bic=bics, binom_ll=binom_lls, binom_ll_2=binom_ll_2s, binom_ll_diff=binom_ll_diffs, mtimer_ll=mtimer_ll))
   }, mc.cores=MAXCORES)
   all_metrics = do.call(rbind, scores)
@@ -409,4 +376,115 @@ randomclone_stick = function(dat, force_clone=F) {
   # remove emoty clusters
   structure_df = structure_df[structure_df$n_ssms > 0,]
   return(list(structure=structure_df, assignments=assignments))
+}
+
+calc_exp_mutreads_ccf = function(ccf, purity, ploidy, mean_depth) {
+  return(ccf / (purity*ploidy + (1-purity)*2) * mean_depth)
+}
+
+mergeClustersByMutreadDiff = function(clusters, purity, ploidy, vcf_snv, min_read_diff) {
+  clusters_new = clusters
+  exp_reads = sapply(clusters$ccf, calc_exp_mutreads_ccf, purity=purity, ploidy=ploidy, mean_depth=mean(getTumorDepth(vcf_snv), na.rm=T))
+  ccf_diff = exp_reads[1:(length(exp_reads)-1)] - exp_reads[2:length(exp_reads)]
+
+  if (any(ccf_diff < min_read_diff)) {
+
+    #' Iteratively merge a pair of clusters untill no more pairs within distance can be found
+    merged = T
+    while(merged) {
+      merged = F
+
+      exp_reads = sapply(clusters_new$ccf, calc_exp_mutreads_ccf, purity=purity, ploidy=ploidy, mean_depth=mean(getTumorDepth(vcf_snv), na.rm=T))
+      ccf_diff = exp_reads[1:(length(exp_reads)-1)] - exp_reads[2:length(exp_reads)]
+      to_merge = which(ccf_diff < min_read_diff)
+
+      if (length(to_merge)==0) {
+        merged = F
+        break
+      } else {
+        i = to_merge[1]
+        clusters_new$ccf[i] = sum(clusters_new$ccf[c(i, i+1)]*clusters_new$n_ssms[c(i, i+1)]) / sum(clusters_new$n_ssms[c(i, i+1)])
+        clusters_new$n_ssms[i] = sum(clusters_new$n_ssms[c(i, i+1)])
+        clusters_new = clusters_new[-(i+1),]
+        merged = T
+      }
+
+      if (nrow(clusters_new)==1) {
+        merged = F
+        break
+      }
+    }
+  }
+  clusters_new$proportion = clusters_new$ccf * purity
+  
+  # sorting and renumbering clusters
+  clusters_new = clusters_new[with(clusters_new, order(proportion, decreasing=T)),]
+  clusters_new$cluster = 1:nrow(clusters_new)
+  return(clusters_new)
+}
+
+assign_mtimer = function(MCN, clusters, purity) {
+  best_cluster = sapply(MCN$D$CNF, function(x) if (is.na(x)) NA else which.min(abs(x-clusters$proportion)))
+  cluster_counts = table(factor(best_cluster, levels=clusters$cluster))
+  clusters_new_2 = data.frame(clusters$cluster, sapply(clusters$cluster, function(x) cluster_counts[[as.character(x)]]), clusters$proportion, clusters$ccf)
+  colnames(clusters_new_2) = colnames(clusters)
+
+  mcn = dpclust3p::mutationBurdenToMutationCopyNumber(burden=MCN$D$altCount / (MCN$D$altCount + MCN$D$wtCount), cellularity=purity, normalCopyNumber=rep(2, nrow(MCN$D)), totalCopyNumber=MCN$D$MajCN + MCN$D$MinCN)
+  if (all(is.na(best_cluster))) {
+    mcn = rep(NA, length(best_cluster))
+  }
+  ccf = MCN$D$CNF / purity
+  plot_data_2 = data.frame(mcn=mcn, ccf=ccf, cluster=factor(best_cluster, levels=rev(unique(sort(clusters$cluster)))))
+  return(list(plot_data=plot_data_2, clusters_new=clusters_new_2))
+}
+
+pcawg11_output = function(snv_mtimer, MCN, consensus_vcf_file) {
+  # Cluster locations
+  final_clusters = snv_mtimer$clusters
+
+  # Assignments
+  snv_assignments = data.frame(chr=as.character(seqnames(vcf_snv)), pos=as.numeric(start(vcf_snv)), cluster=snv_mtimer$plot_data$cluster)
+
+  # Multiplicities
+  snv_mult = data.frame(chr=snv_assignments$chr,
+                        pos=snv_assignments$pos,
+                        tumour_copynumber=MCN$D$MajCN+MCN$D$MinCN,
+                        multiplicity=MCN$D$MutCN, multiplicity_options=NA, probabilities=NA)
+
+  get_probs = function(final_clusters, MCN, vcf_snv) {
+    n_subclones = nrow(final_clusters)-1
+    if (n_subclones==0) {
+      r = t(t(sapply(MCN$D$pAllSubclones, function(x) 0)))
+    } else if (n_subclones==1) {
+      #r = t(t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+      r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(NA, n_subclones))))
+    } else {
+      # r = t(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones)))
+      # r = matrix(unlist(sapply(MCN$D$pAllSubclones, function(x) if(length(x)!=0) x else rep(1, n_subclones))), ncol=n_subclones, byrow=T)
+      r = matrix(unlist(lapply(MCN$D$pAllSubclones, function(x) if (is.null(x)) { rep(NA, n_subclones) } else { x })), ncol=n_subclones, byrow=T)
+    }
+    snv_assignments_prob = data.frame(chr=as.character(seqnames(vcf_snv)),
+                                      pos=as.numeric(start(vcf_snv)),
+                                      clone=1-rowSums(r),
+                                      r, stringsAsFactors=F)
+
+    if (n_subclones==0) {
+      snv_assignments_prob = snv_assignments_prob[,1:3]
+    }
+
+    # set cluster number in the header
+    colnames(snv_assignments_prob) = c("chr", "pos", paste0("cluster_", final_clusters$cluster))
+    return(snv_assignments_prob)
+  }
+
+  # Obtain probabilities of assignments - snv
+  snv_assignments_prob = get_probs(final_clusters, MCN, vcf_snv)
+
+  # Recalculate the size of the clusters
+  final_clusters$n_snvs = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob)), drop=F], na.rm=T)
+
+  return(list(final_clusters=final_clusters,
+        snv_assignments=snv_assignments,
+        snv_mult=snv_mult,
+        snv_assignments_prob=snv_assignments_prob))
 }
