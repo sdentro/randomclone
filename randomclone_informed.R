@@ -31,7 +31,7 @@ if (length(args) > 7) {
   is_wgd = args[12]=="wgd"
   MAXCORES = as.numeric(args[13])
 } else {
-  MAXCORES = 10
+  MAXCORES = 1
 }
 
 source(file.path(libpath, "util.R"))
@@ -70,6 +70,7 @@ if (nrow(dat) < 2) {
 }
 
 #' Run the method
+if (F) {
 print("STARTING")
  res = list()
  for (i in 1:ITERATIONS) {
@@ -82,17 +83,18 @@ print("STARTING")
      q(save="no", status=1)
    }
 }
+}
 
-#res = mclapply(1:ITERATIONS, function(i) {
-#  if (usemethod=="unif") {
-#    return(randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE))
-#  } else if (usemethod=="stick") {
-#    return(randomclone_stick(dat, force_clone=FORCE_CLONE))
-#  } else {
-#    print(paste0("Uknown method ", usemethod))
-#    q(save="no", status=1)
-#  }
-#}, mc.cores=MAXCORES)
+res = mclapply(1:ITERATIONS, function(i) {
+  if (usemethod=="unif") {
+    return(randomclone_unif(dat, min_bound_data=MIN_BOUND_DATA, max_bound_data=MAX_BOUND_DATA, force_clone=FORCE_CLONE))
+  } else if (usemethod=="stick") {
+    return(randomclone_stick(dat, force_clone=FORCE_CLONE))
+  } else {
+    print(paste0("Uknown method ", usemethod))
+    q(save="no", status=1)
+  }
+}, mc.cores=MAXCORES)
 
 #' Calc overall likelihoods for every solution
  all_metrics2 = calc_all_metrics(libpath, mtimer_libpath, dat, purity, res, vcf_snv_file, bb_file, ploidy, sex, is_wgd, q=0.05, min_read_diff=2, rho_snv=0.01, deltaFreq=0.00, round_subclonal_cn=round_subclonal_cn, remove_subclonal_cn=remove_subclonal_cn, xmin=0) 
@@ -183,7 +185,7 @@ print("STARTING")
 # Write the output - taking best_binom as best solution
 #write_output_calibration_format(samplename, dat, res[[best_mtimer]]$structure, res[[best_mtimer]]$assignments, purity, outdir)
 #write_output_summary_table(res[[best_mtimer]]$structure, outdir, samplename, project, purity)
-write.table(res[[best_mtimer]]$structure, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), row.names=F, sep="\t", quote=F)
+#write.table(res[[best_mtimer]]$structure, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), row.names=F, sep="\t", quote=F)
 #write.table(res[[best_mtimer]]$assignments, file=file.path(outdir, paste0(samplename, "_mutation_assignments.txt")), row.names=F, sep="\t", quote=F)
 save(res, all_metrics2, file=file.path(outdir, paste0(samplename, "_randomclone_informed_models.RData")))
 
@@ -203,7 +205,6 @@ vcf_snv <- readVcf(vcf_snv_file, genome="GRCh37")
 if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff=2) }
 # Calc assignment probs
 MCN <- computeMutCn(vcf_snv, bb, clusters, purity, gender=sex, isWgd=is_wgd, rho=0.01, n.boot=0, xmin=0, deltaFreq=0)
-save(MCN, vcf_snv, bb, clusters, purity, sex, is_wgd, file=file.path(outdir, paste0(samplename, "_randomclone_informed_selected_solution.RData")))
 
 snv_mtimer = assign_mtimer(MCN, clusters, purity)
 final_pcawg11_output = pcawg11_output(snv_mtimer=snv_mtimer, MCN=MCN, consensus_vcf_file=vcf_snv_file)
@@ -216,6 +217,7 @@ snv_output_hard = data.frame(chr=snv_output$chr,
 			     pos=snv_output$pos,
 			     cluster=unlist(lapply(snv_output[,grepl("cluster", colnames(snv_output)), drop=F], which.max)))
 
-write.table(final_pcawg11_output$final_clusters, file=file.path(outdir, paste0(samplename, "_subclonal_structure2.txt")), row.names=F, sep="\t", quote=F)
+save(MCN, vcf_snv, bb, clusters, purity, sex, is_wgd, snv_mtimer, final_pcawg11_output, snv_output, snv_output_hard, file=file.path(outdir, paste0(samplename, "_randomclone_informed_selected_solution.RData")))
+write.table(final_pcawg11_output$final_clusters, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), row.names=F, sep="\t", quote=F)
 write.table(snv_output, file=file.path(outdir, paste0(samplename, "_mutation_assignments_probabilities.txt")), row.names=F, sep="\t", quote=F)
 write.table(snv_output_hard, file=file.path(outdir, paste0(samplename, "_mutation_assignments.txt")), row.names=F, sep="\t", quote=F)

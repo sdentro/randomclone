@@ -481,7 +481,7 @@ pcawg11_output = function(snv_mtimer, MCN, consensus_vcf_file) {
   snv_assignments_prob = get_probs(final_clusters, MCN, vcf_snv)
 
   # Recalculate the size of the clusters
-  final_clusters$n_snvs = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob)), drop=F], na.rm=T)
+  final_clusters$n_ssms = colSums(snv_assignments_prob[, grepl("cluster", colnames(snv_assignments_prob)), drop=F], na.rm=T)
 
   return(list(final_clusters=final_clusters,
         snv_assignments=snv_assignments,
