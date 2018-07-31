@@ -199,7 +199,7 @@ clusters$cluster = 1:nrow(clusters)
 
 # Load copy number and variants
 bb <- loadBB(bb_file, round_subclones=round_subclonal_cn, remove_subclones=remove_subclonal_cn)
-bb$clonal_frequency = 1
+bb$clonal_frequency = purity
 vcf_snv <- readVcf(vcf_snv_file, genome="GRCh37") 
 # Merge too close clusters
 if (nrow(clusters) > 1) { clusters = mergeClustersByMutreadDiff(clusters, purity, ploidy, vcf_snv, min_read_diff=2) }
@@ -215,7 +215,7 @@ snv_output = data.frame(chr=final_pcawg11_output$snv_assignments_prob$chr,
 
 snv_output_hard = data.frame(chr=snv_output$chr,
 			     pos=snv_output$pos,
-			     cluster=unlist(lapply(snv_output[,grepl("cluster", colnames(snv_output)), drop=F], which.max)))
+			     cluster=unlist(apply(snv_output[,grepl("cluster", colnames(snv_output)), drop=F], 1, function(x) ifelse(all(is.na(x)), NA, which.max(x)))))
 
 save(MCN, vcf_snv, bb, clusters, purity, sex, is_wgd, snv_mtimer, final_pcawg11_output, snv_output, snv_output_hard, file=file.path(outdir, paste0(samplename, "_randomclone_informed_selected_solution.RData")))
 write.table(final_pcawg11_output$final_clusters, file=file.path(outdir, paste0(samplename, "_subclonal_structure.txt")), row.names=F, sep="\t", quote=F)
